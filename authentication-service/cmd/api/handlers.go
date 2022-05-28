@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -16,27 +17,27 @@ func (app *Config) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 	err := app.readJSON(w, r, &requestPayload)
 	if err != nil {
-		app.errorJSON(w, err, http.StatusBadRequest)
+		_ = app.errorJSON(w, err, http.StatusBadRequest)
 		return
 	}
 
 	// validate the user against the database
 	user, err := app.Models.User.GetByEmail(requestPayload.Email)
 	if err != nil {
-		app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
+		_ = app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
 		return
 	}
 
 	valid, err := user.PasswordMatches(requestPayload.Password)
 	if err != nil || !valid {
-		app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
+		_ = app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
 		return
 	}
 
 	// log authentication
 	err = app.logRequest("authentication", fmt.Sprintf("%s logged in", user.Email))
 	if err != nil {
-		app.errorJSON(w, err)
+		_ = app.errorJSON(w, err)
 		return
 	}
 
@@ -46,7 +47,11 @@ func (app *Config) Authenticate(w http.ResponseWriter, r *http.Request) {
 		Data:    user,
 	}
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	err = app.writeJSON(w, http.StatusAccepted, payload)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
 
 func (app *Config) logRequest(name, data string) error {
